@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Run Mini - 쿠키런 미니</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Jua&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Jua', 'Fredoka One', sans-serif;
+            background-color: #1a0c27;
+            overflow: hidden;
+        }
+        .text-stroke {
+            -webkit-text-stroke: 2px #3d1c06;
+            text-shadow: 3px 3px 0 #000;
+        }
+        .text-stroke-sm {
+            -webkit-text-stroke: 1px #3d1c06;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 2px 2px 0 #3d1c06;
+        }
+        /* Custom Game Canvas Overlay Styling */
+        #gameCanvas {
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            background: linear-gradient(to bottom, #2b1055, #7597de);
+        }
+        .btn-cookie {
+            background: linear-gradient(180deg, #ff9d00 0%, #e65c00 100%);
+            border: 4px solid #fff;
+            box-shadow: 0 6px 0 #803300, 0 10px 15px rgba(0,0,0,0.4);
+            transition: all 0.1s ease;
+        }
+        .btn-cookie:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #803300, 0 4px 6px rgba(0,0,0,0.4);
+        }
+        .btn-blue {
+            background: linear-gradient(180deg, #00c6ff 0%, #0072ff 100%);
+            border: 4px solid #fff;
+            box-shadow: 0 6px 0 #003e80, 0 10px 15px rgba(0,0,0,0.4);
+        }
+        .btn-blue:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #003e80, 0 4px 6px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center p-0 m-0 bg-slate-900 text-white select-none">
+
+    <div id="gameContainer" class="relative w-full max-w-4xl h-full max-h-[600px] aspect-[16/9] bg-slate-800 rounded-none sm:rounded-2xl overflow-hidden flex flex-col justify-between">
+        
+        <!-- Game Canvas Layer -->
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
+
+        <div id="hud" class="relative z-10 flex justify-between items-start p-4 pointer-events-none hidden">
+            <!-- Health & Info Bar -->
+            <div class="flex flex-col gap-2 w-1/2 max-w-xs">
+                <!-- Health Bar Frame -->
+                <div class="bg-amber-950/80 border-2 border-amber-400 p-1 rounded-full shadow-lg">
+                    <div class="w-full bg-slate-900/80 h-5 rounded-full overflow-hidden p-0.5 border border-amber-900">
+                        <div id="healthFill" class="h-full bg-gradient-to-r from-red-500 via-pink-500 to-green-400 rounded-full transition-all duration-200" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <!-- Jelly Count Counter -->
+                <div class="flex items-center gap-2 bg-amber-950/70 px-3 py-1 rounded-full border border-amber-500/50 w-fit">
+                    <svg class="w-6 h-6 animate-bounce" viewBox="0 0 100 100">
+                        <path d="M50 15 C30 15 15 30 15 50 C15 75 50 90 50 90 C50 90 85 75 85 50 C85 30 70 15 50 15 Z" fill="#ff4081" stroke="#fff" stroke-width="5"/>
+                        <circle cx="35" cy="40" r="5" fill="#fff"/>
+                        <circle cx="65" cy="40" r="5" fill="#fff"/>
+                    </svg>
+                    <span id="jellyCount" class="text-xl font-bold text-yellow-300 text-stroke-sm">0</span>
+                </div>
+            </div>
+
+            <!-- Score Display -->
+            <div class="flex flex-col items-end">
+                <div class="text-xs text-amber-200 uppercase tracking-widest text-stroke-sm">SCORE</div>
+                <div id="scoreDisplay" class="text-3xl sm:text-4xl font-extrabold text-yellow-400 text-glow tracking-wider">0</div>
+            </div>
+        </div>
+
+        <div id="mainMenu" class="absolute inset-0 z-20 flex flex-col items-center justify-between p-6 bg-black/40 backdrop-blur-sm text-center">
+            <!-- Title Header -->
+            <div class="mt-4 flex flex-col items-center">
+                <div class="text-xs sm:text-sm font-bold bg-amber-500 text-amber-950 px-4 py-1 rounded-full border-2 border-white mb-2 shadow-lg tracking-wider">SUPER RUNNER</div>
+                <h1 class="text-5xl sm:text-7xl font-black text-amber-400 text-glow tracking-wide transform -rotate-2 hover:rotate-0 transition-transform">
+                    COOKIE RUN
+                </h1>
+                <p class="text-amber-200 text-stroke-sm text-lg mt-1">마녀의 오븐에서 탈출하라!</p>
+            </div>
+
+            <!-- Character Preview Card -->
+            <div class="relative bg-amber-900/60 border-4 border-amber-400/80 rounded-2xl p-4 w-64 shadow-2xl backdrop-blur-md flex flex-col items-center">
+                <div id="characterPreview" class="w-24 h-24 my-2 flex items-center justify-center">
+                    <!-- SVG Cookie Character Preview -->
+                </div>
+                <div id="characterName" class="text-xl font-bold text-yellow-300 text-stroke-sm">용감한 쿠키</div>
+                <p id="characterDesc" class="text-xs text-amber-100/80 mt-1">기본에 충실한 표준 쿠키</p>
+                
+                <!-- Character Selector Buttons -->
+                <div class="flex gap-2 mt-3">
+                    <button id="btnCharPrev" class="px-3 py-1 bg-amber-700 hover:bg-amber-600 rounded-lg border border-amber-300 text-sm font-bold">◀</button>
+                    <button id="btnCharNext" class="px-3 py-1 bg-amber-700 hover:bg-amber-600 rounded-lg border border-amber-300 text-sm font-bold">▶</button>
+                </div>
+            </div>
+
+            <!-- Start Controls & High Score -->
+            <div class="mb-4 flex flex-col items-center gap-3">
+                <div class="text-amber-200 text-sm bg-black/50 px-4 py-1 rounded-full border border-amber-500/30">
+                    최고 기록: <span id="highScoreMenu" class="text-yellow-400 font-bold">0</span> 점
+                </div>
+                <button id="btnStart" class="btn-cookie px-10 py-3 rounded-2xl text-2xl font-black text-white tracking-wider cursor-pointer transform hover:scale-105">
+                    게임 시작!
+                </button>
+            </div>
+        </div>
+
+        <div id="gameOverModal" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-black/75 backdrop-blur-md text-center hidden">
+            <div class="bg-amber-950 border-4 border-amber-400 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl flex flex-col items-center gap-4 transform scale-95 transition-all">
+                <h2 class="text-4xl font-black text-red-500 text-stroke">GAME OVER</h2>
+                <p class="text-amber-200 text-sm">체력이 모두 고갈되었습니다!</p>
+
+                <!-- Score Stats Table -->
+                <div class="w-full bg-amber-900/80 rounded-xl p-4 border border-amber-600/50 flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm text-amber-200">
+                        <span>획득 점수</span>
+                        <span id="finalScore" class="text-2xl font-bold text-yellow-300 text-stroke-sm">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-amber-200">
+                        <span>모은 젤리</span>
+                        <span id="finalJellies" class="text-xl font-bold text-pink-300">0</span>
+                    </div>
+                    <div class="border-t border-amber-700/50 my-1"></div>
+                    <div class="flex justify-between items-center text-sm text-amber-300">
+                        <span>최고 기록</span>
+                        <span id="finalHighScore" class="text-xl font-bold text-yellow-400">0</span>
+                    </div>
+                </div>
+
+                <!-- Retry Button -->
+                <button id="btnRetry" class="btn-cookie w-full py-3 rounded-xl text-xl font-black text-white cursor-pointer mt-2">
+                    다시 도전!
+                </button>
+            </div>
+        </div>
+
+        <div id="touchControls" class="relative z-10 flex justify-between p-4 pb-6 pointer-events-none hidden">
+            <button id="btnSlide" class="pointer-events-auto btn-blue px-8 py-5 rounded-2xl font-black text-2xl text-white opacity-80 active:opacity-100 active:scale-95 transition-all">
+                슬라이드 ⬇
+            </button>
+            <button id="btnJump" class="pointer-events-auto btn-cookie px-8 py-5 rounded-2xl font-black text-2xl text-white opacity-80 active:opacity-100 active:scale-95 transition-all">
+                점프 ⬆
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playJump() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playJelly() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(900, this.ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playHeart() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playHit() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playGameOver() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+        }
+
+        const audioFX = new SoundFX();
+
+        const CHARACTERS = [
+            {
+                name: "용감한 쿠키",
+                desc: "기본에 충실한 용감한 초코 쿠키!",
+                bodyColor: "#c67d42",
+                icingColor: "#ffffff",
+                eyeColor: "#3d1c06",
+                accentColor: "#e63946",
+                speedBonus: 1
+            },
+            {
+                name: "딸기맛 쿠키",
+                desc: "달콤하고 상큼한 분홍빛 딸기 쿠키!",
+                bodyColor: "#ff85a1",
+                icingColor: "#fff0f5",
+                eyeColor: "#590d22",
+                accentColor: "#ff0054",
+                speedBonus: 1.05
+            },
+            {
+                name: "민트초코 쿠키",
+                desc: "상쾌하고 세련된 민트초코 쿠키!",
+                bodyColor: "#4ea8de",
+                icingColor: "#2b2d42",
+                eyeColor: "#121212",
+                accentColor: "#72efdd",
+                speedBonus: 1.1
+            }
+        ];
+
+        let selectedCharIdx = 0;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game Dimensions (Virtual Fixed Canvas)
+        const GAME_WIDTH = 960;
+        const GAME_HEIGHT = 540;
+
+        // Game States
+        let gameState = 'MENU'; // 'MENU', 'RUNNING', 'GAMEOVER'
+        let score = 0;
+        let jellyCount = 0;
+        let health = 100;
+        let maxHealth = 100;
+        let gameSpeed = 6;
+        let distance = 0;
+        let highScore = parseInt(localStorage.getItem('cookie_high_score') || '0');
+
+        // Parallax Background offsets
+        let bgFarX = 0;
+        let bgMidX = 0;
+        let floorX = 0;
+
+        // Player / Cookie State
+        const player = {
+            x: 120,
+            y: 0,
+            width: 60,
+            height: 80,
+            velocityY: 0,
+            gravity: 0.7,
+            jumpStrength: -14,
+            jumpCount: 0,
+            maxJumps: 2,
+            isSliding: false,
+            slideTimer: 0,
+            groundY: GAME_HEIGHT - 110,
+            invulnerable: 0,
+            runFrame: 0
+        };
+
+        // Entities arrays
+        let jellies = [];
+        let obstacles = [];
+        let particles = [];
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const rect = container.getBoundingClientRect();
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function updateCharacterPreview() {
+            const char = CHARACTERS[selectedCharIdx];
+            document.getElementById('characterName').innerText = char.name;
+            document.getElementById('characterDesc').innerText = char.desc;
+
+            const previewEl = document.getElementById('characterPreview');
+            previewEl.innerHTML = `
+                <svg width="100" height="100" viewBox="0 0 100 100">
+                    <!-- Head -->
+                    <circle cx="50" cy="40" r="28" fill="${char.bodyColor}" stroke="#3d1c06" stroke-width="4"/>
+                    <!-- Eyes -->
+                    <circle cx="42" cy="38" r="4" fill="${char.eyeColor}"/>
+                    <circle cx="58" cy="38" r="4" fill="${char.eyeColor}"/>
+                    <!-- Cheeks -->
+                    <circle cx="36" cy="45" r="4" fill="#ff70a6" opacity="0.6"/>
+                    <circle cx="64" cy="45" r="4" fill="#ff70a6" opacity="0.6"/>
+                    <!-- Smile -->
+                    <path d="M 44 48 Q 50 56 56 48" stroke="#3d1c06" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <!-- Body -->
+                    <rect x="36" y="62" width="28" height="30" rx="10" fill="${char.bodyColor}" stroke="#3d1c06" stroke-width="4"/>
+                    <!-- Icing Buttons/Decoration -->
+                    <circle cx="50" cy="70" r="3" fill="${char.icingColor}"/>
+                    <circle cx="50" cy="80" r="3" fill="${char.icingColor}"/>
+                    <!-- Ribbon/Accent -->
+                    <path d="M 42 62 Q 50 66 58 62" stroke="${char.accentColor}" stroke-width="4" fill="none"/>
+                </svg>
+            `;
+        }
+
+        document.getElementById('btnCharPrev').addEventListener('click', () => {
+            selectedCharIdx = (selectedCharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
+            updateCharacterPreview();
+        });
+        document.getElementById('btnCharNext').addEventListener('click', () => {
+            selectedCharIdx = (selectedCharIdx + 1) % CHARACTERS.length;
+            updateCharacterPreview();
+        });
+
+        updateCharacterPreview();
+        document.getElementById('highScoreMenu').innerText = highScore;
+
+        function triggerJump() {
+            if (gameState !== 'RUNNING') return;
+            audioFX.init();
+            
+            if (player.jumpCount < player.maxJumps) {
+                player.velocityY = player.jumpStrength;
+                player.jumpCount++;
+                player.isSliding = false;
+                audioFX.playJump();
+                createParticles(player.x + player.width/2, player.y + player.height, '#ffffff', 8);
+            }
+        }
+
+        function setSliding(sliding) {
+            if (gameState !== 'RUNNING') return;
+            if (sliding && player.jumpCount === 0) {
+                player.isSliding = true;
+            } else if (!sliding) {
+                player.isSliding = false;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                triggerJump();
+            } else if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                setSliding(true);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowDown') {
+                setSliding(false);
+            }
+        });
+
+        // Touch Control Bindings
+        const btnJump = document.getElementById('btnJump');
+        const btnSlide = document.getElementById('btnSlide');
+
+        btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
+        btnJump.addEventListener('mousedown', (e) => { e.preventDefault(); triggerJump(); });
+
+        btnSlide.addEventListener('touchstart', (e) => { e.preventDefault(); setSliding(true); });
+        btnSlide.addEventListener('touchend', (e) => { e.preventDefault(); setSliding(false); });
+        btnSlide.addEventListener('mousedown', (e) => { e.preventDefault(); setSliding(true); });
+        btnSlide.addEventListener('mouseup', (e) => { e.preventDefault(); setSliding(false); });
+
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 6 + 4,
+                    color: color,
+                    life: 1.0,
+                    decay: Math.random() * 0.05 + 0.02
+                });
+            }
+        }
+
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function spawnPattern() {
+            if (Math.random() < 0.6) {
+                // Spawn Jelly Row/Arc
+                const type = Math.random() > 0.2 ? 'STAR' : 'HEART';
+                const count = Math.floor(Math.random() * 5) + 3;
+                const startY = GAME_HEIGHT - 160 - Math.random() * 120;
+
+                for (let i = 0; i < count; i++) {
+                    jellies.push({
+                        x: GAME_WIDTH + i * 40,
+                        y: startY + Math.sin(i * 0.5) * 20,
+                        type: type,
+                        width: 30,
+                        height: 30,
+                        collected: false
+                    });
+                }
+            }
+
+            if (Math.random() < 0.5) {
+                // Spawn Obstacle
+                const isHigh = Math.random() < 0.4; // High hurdle requiring slide
+                obstacles.push({
+                    x: GAME_WIDTH + 200,
+                    y: isHigh ? GAME_HEIGHT - 190 : GAME_HEIGHT - 130,
+                    width: isHigh ? 50 : 45,
+                    height: isHigh ? 80 : 55,
+                    type: isHigh ? 'HIGH' : 'LOW',
+                    hit: false
+                });
+            }
+        }
+
+        let spawnTimer = 0;
+
+        function startGame() {
+            audioFX.init();
+            gameState = 'RUNNING';
+            score = 0;
+            jellyCount = 0;
+            health = 100;
+            gameSpeed = 6 * CHARACTERS[selectedCharIdx].speedBonus;
+            distance = 0;
+            jellies = [];
+            obstacles = [];
+            particles = [];
+
+            player.y = player.groundY - player.height;
+            player.velocityY = 0;
+            player.jumpCount = 0;
+
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('touchControls').classList.remove('hidden');
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            audioFX.playGameOver();
+
+            if (score > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem('cookie_high_score', highScore);
+            }
+
+            document.getElementById('finalScore').innerText = Math.floor(score);
+            document.getElementById('finalJellies').innerText = jellyCount;
+            document.getElementById('finalHighScore').innerText = highScore;
+
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('touchControls').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        function drawBackground() {
+            // Sky Gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            skyGradient.addColorStop(0, '#1d0b36');
+            skyGradient.addColorStop(0.6, '#451254');
+            skyGradient.addColorStop(1, '#782862');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // Far Background Layer (Moon & Mountains)
+            ctx.fillStyle = '#fdf0d5';
+            ctx.beginPath();
+            ctx.arc(GAME_WIDTH - 150, 100, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Distant Oven/Castles
+            bgFarX = (bgFarX - gameSpeed * 0.2) % 400;
+            ctx.fillStyle = '#2d0938';
+            for (let i = -1; i < GAME_WIDTH / 400 + 2; i++) {
+                let x = i * 400 + bgFarX;
+                ctx.beginPath();
+                ctx.moveTo(x, GAME_HEIGHT - 90);
+                ctx.lineTo(x + 100, GAME_HEIGHT - 250);
+                ctx.lineTo(x + 200, GAME_HEIGHT - 200);
+                ctx.lineTo(x + 300, GAME_HEIGHT - 280);
+                ctx.lineTo(x + 400, GAME_HEIGHT - 90);
+                ctx.fill();
+            }
+
+            // Mid Background Layer (Candy Trees & Fences)
+            bgMidX = (bgMidX - gameSpeed * 0.5) % 300;
+            ctx.fillStyle = '#5c1d5d';
+            for (let i = -1; i < GAME_WIDTH / 300 + 2; i++) {
+                let x = i * 300 + bgMidX;
+                // Lollipop tree
+                ctx.fillRect(x + 50, GAME_HEIGHT - 170, 12, 80);
+                ctx.beginPath();
+                ctx.arc(x + 56, GAME_HEIGHT - 180, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Foreground Floor (Oven Brick Floor)
+            floorX = (floorX - gameSpeed) % 60;
+            const floorY = GAME_HEIGHT - 90;
+
+            // Base Floor Dirt
+            ctx.fillStyle = '#3d1c06';
+            ctx.fillRect(0, floorY, GAME_WIDTH, 90);
+
+            // Floor Top Crust Layer
+            ctx.fillStyle = '#ff9f1c';
+            ctx.fillRect(0, floorY, GAME_WIDTH, 15);
+
+            // Floor Pattern / Tiles
+            ctx.strokeStyle = '#2b1055';
+            ctx.lineWidth = 3;
+            for (let x = floorX - 60; x < GAME_WIDTH + 60; x += 60) {
+                ctx.strokeRect(x, floorY + 15, 60, 75);
+            }
+        }
+
+        function drawPlayer() {
+            const char = CHARACTERS[selectedCharIdx];
+            ctx.save();
+
+            // Position & Dimensions adjustments for Slide
+            let currentWidth = player.width;
+            let currentHeight = player.isSliding ? 45 : player.height;
+            let currentY = player.isSliding ? player.groundY - currentHeight : player.y;
+
+            // Hit Flashing effect when invulnerable
+            if (player.invulnerable > 0 && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+
+            ctx.translate(player.x + currentWidth / 2, currentY + currentHeight / 2);
+
+            if (player.isSliding) {
+                // Sliding Pose
+                ctx.rotate(-Math.PI / 12);
+                
+                // Cookie Body (Sliding horizontal)
+                ctx.fillStyle = char.bodyColor;
+                ctx.strokeStyle = '#3d1c06';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.roundRect(-35, -20, 70, 40, 15);
+                ctx.fill();
+                ctx.stroke();
+
+                // Eyes
+                ctx.fillStyle = char.eyeColor;
+                ctx.beginPath();
+                ctx.arc(15, -5, 4, 0, Math.PI * 2);
+                ctx.arc(25, -5, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else {
+                // Running / Jumping Pose
+                player.runFrame += 0.2;
+                let legAngle = Math.sin(player.runFrame) * 0.4;
+                if (player.jumpCount > 0) legAngle = 0.5; // Fixed leg angle in air
+
+                // Legs
+                ctx.strokeStyle = char.bodyColor;
+                ctx.lineWidth = 10;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(-10, 15);
+                ctx.lineTo(-10 - Math.sin(legAngle) * 20, 35);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(10, 15);
+                ctx.lineTo(10 + Math.sin(legAngle) * 20, 35);
+                ctx.stroke();
+
+                // Cookie Body/Head
+                ctx.fillStyle = char.bodyColor;
+                ctx.strokeStyle = '#3d1c06';
+                ctx.lineWidth = 4;
+
+                // Head
+                ctx.beginPath();
+                ctx.arc(0, -15, 24, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Body
+                ctx.beginPath();
+                ctx.roundRect(-16, 2, 32, 28, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Face Features
+                ctx.fillStyle = char.eyeColor;
+                ctx.beginPath();
+                ctx.arc(-8, -18, 3.5, 0, Math.PI * 2);
+                ctx.arc(8, -18, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Cheeks
+                ctx.fillStyle = '#ff70a6';
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(-14, -12, 3, 0, Math.PI * 2);
+                ctx.arc(14, -12, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+
+                // Smile
+                ctx.strokeStyle = '#3d1c06';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, -12, 6, 0.1 * Math.PI, 0.9 * Math.PI);
+                ctx.stroke();
+
+                // Buttons / Icing Decor
+                ctx.fillStyle = char.icingColor;
+                ctx.beginPath();
+                ctx.arc(0, 10, 3, 0, Math.PI * 2);
+                ctx.arc(0, 20, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawJellies() {
+            jellies.forEach(jelly => {
+                if (jelly.collected) return;
+
+                ctx.save();
+                ctx.translate(jelly.x + jelly.width / 2, jelly.y + jelly.height / 2);
+
+                if (jelly.type === 'STAR') {
+                    // Star / Yellow Jelly
+                    ctx.fillStyle = '#ffd166';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * 15, -Math.sin((18 + i * 72) * Math.PI / 180) * 15);
+                        ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * 7, -Math.sin((54 + i * 72) * Math.PI / 180) * 7);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (jelly.type === 'HEART') {
+                    // Health Heart Jelly
+                    ctx.fillStyle = '#ff477e';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 5);
+                    ctx.bezierCurveTo(-12, -10, -20, 5, 0, 18);
+                    ctx.bezierCurveTo(20, 5, 12, -10, 0, 5);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            });
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obs => {
+                ctx.save();
+                if (obs.type === 'LOW') {
+                    // Spike Obstacle
+                    ctx.fillStyle = '#e63946';
+                    ctx.strokeStyle = '#1d3557';
+                    ctx.lineWidth = 4;
+
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x, obs.y + obs.height);
+                    ctx.lineTo(obs.x + obs.width / 2, obs.y);
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Inner detail
+                    ctx.fillStyle = '#ffb703';
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + 12, obs.y + obs.height);
+                    ctx.lineTo(obs.x + obs.width / 2, obs.y + 18);
+                    ctx.lineTo(obs.x + obs.width - 12, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+
+                } else {
+                    // High Barrier (Witch Broom / Hanging hurdle)
+                    ctx.fillStyle = '#4a154b';
+                    ctx.strokeStyle = '#ffb703';
+                    ctx.lineWidth = 3;
+
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+                    // Caution stripes
+                    ctx.fillStyle = '#ffb703';
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x, obs.y + 15);
+                    ctx.lineTo(obs.x + 20, obs.y);
+                    ctx.lineTo(obs.x + 35, obs.y);
+                    ctx.lineTo(obs.x, obs.y + 35);
+                    ctx.fill();
+                }
+                ctx.restore();
+            });
+        }
+
+        function checkCollisions() {
+            const playerBox = {
+                x: player.x + 10,
+                y: player.isSliding ? player.groundY - 45 : player.y,
+                width: player.width - 20,
+                height: player.isSliding ? 40 : player.height
+            };
+
+            // Jellies Collection
+            jellies.forEach(jelly => {
+                if (jelly.collected) return;
+
+                if (playerBox.x < jelly.x + jelly.width &&
+                    playerBox.x + playerBox.width > jelly.x &&
+                    playerBox.y < jelly.y + jelly.height &&
+                    playerBox.y + playerBox.height > jelly.y) {
+                    
+                    jelly.collected = true;
+                    if (jelly.type === 'STAR') {
+                        score += 100;
+                        jellyCount++;
+                        audioFX.playJelly();
+                        createParticles(jelly.x, jelly.y, '#ffd166', 6);
+                    } else if (jelly.type === 'HEART') {
+                        health = Math.min(maxHealth, health + 15);
+                        audioFX.playHeart();
+                        createParticles(jelly.x, jelly.y, '#ff477e', 10);
+                    }
+                }
+            });
+
+            // Obstacle Hits
+            if (player.invulnerable <= 0) {
+                obstacles.forEach(obs => {
+                    if (obs.hit) return;
+
+                    if (playerBox.x < obs.x + obs.width &&
+                        playerBox.x + playerBox.width > obs.x &&
+                        playerBox.y < obs.y + obs.height &&
+                        playerBox.y + playerBox.height > obs.y) {
+                        
+                        obs.hit = true;
+                        health -= 25;
+                        player.invulnerable = 60; // ~1 sec invulnerability frame
+                        audioFX.playHit();
+                        createParticles(playerBox.x + playerBox.width/2, playerBox.y + playerBox.height/2, '#e63946', 15);
+                    }
+                });
+            }
+        }
+
+        function update() {
+            if (gameState !== 'RUNNING') return;
+
+            // Update Player Physics
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+
+            // Ground Collision
+            if (player.y >= player.groundY - player.height) {
+                player.y = player.groundY - player.height;
+                player.velocityY = 0;
+                player.jumpCount = 0;
+            }
+
+            // Invulnerability timer
+            if (player.invulnerable > 0) player.invulnerable--;
+
+            // Stamina / Health drain over time
+            health -= 0.05;
+            if (health <= 0) {
+                health = 0;
+                gameOver();
+            }
+
+            // Update UI Bars
+            document.getElementById('healthFill').style.width = `${(health / maxHealth) * 100}%`;
+            document.getElementById('scoreDisplay').innerText = Math.floor(score);
+            document.getElementById('jellyCount').innerText = jellyCount;
+
+            // Score & Difficulty Progression
+            score += 0.2;
+            gameSpeed += 0.0005;
+
+            // Spawn Entities
+            spawnTimer++;
+            if (spawnTimer > Math.max(40, 100 - gameSpeed * 3)) {
+                spawnPattern();
+                spawnTimer = 0;
+            }
+
+            // Move Jellies
+            jellies.forEach(jelly => jelly.x -= gameSpeed);
+            jellies = jellies.filter(jelly => jelly.x > -50);
+
+            // Move Obstacles
+            obstacles.forEach(obs => obs.x -= gameSpeed);
+            obstacles = obstacles.filter(obs => obs.x > -60);
+
+            checkCollisions();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            drawBackground();
+            drawJellies();
+            drawObstacles();
+            drawPlayer();
+            updateAndDrawParticles();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('btnStart').addEventListener('click', () => {
+            startGame();
+        });
+
+        document.getElementById('btnRetry').addEventListener('click', () => {
+            startGame();
+        });
+
+        // Start animation loop on window load
+        window.onload = function () {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
